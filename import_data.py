@@ -18,7 +18,7 @@ parser.add_argument('--cat_features',       # List of names in dataset of catego
                     nargs = "*",
                     type = str,
                     default = [])
-parser.add_argument('--to_drop',            # List of variable names in dataset to remove
+parser.add_argument('--to_drop',            # List of variable names in dataset to remove. NOTE: If you use the arff to csv converter I use, you need to drop "id"
                     nargs = "*",
                     type = str,
                     default = [])
