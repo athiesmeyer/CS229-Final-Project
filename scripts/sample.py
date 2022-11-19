@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+from pathlib import Path
 import zero
 import os
 from tab_ddpm.gaussian_multinomial_diffsuion import GaussianMultinomialDiffusion
@@ -181,7 +182,9 @@ def sample_partial(
         disbalance=None,
         device=torch.device('cuda:1'),
         seed=0,
-        change_val=False
+        change_val=False,
+        exp_type="MCAR",
+        exp_prop="0.1"
 ):
     zero.improve_reproducibility(seed)
 
@@ -223,57 +226,71 @@ def sample_partial(
     diffusion.eval()
 
     _, empirical_class_dist = torch.unique(torch.from_numpy(D.y['train']), return_counts=True)
-    # empirical_class_dist = empirical_class_dist.float() + torch.tensor([-5000., 10000.]).float()
+    
+    #### Get test data and one hot encode categorical features ####
 
-    # x_gen, y_gen = diffusion.sample_all(num_samples, batch_size, empirical_class_dist.float(),ddim=False)
-    x_cat_partial, x_num_partial, y_labels = D.X_cat['test'], D.X_num['test'], D.y['test']
-    x_num_partial, x_cat_partial = torch.Tensor(x_num_partial).to(device), torch.Tensor(x_cat_partial).to(device)
-    x_cat_partial_ohe = index_to_log_onehot(x_cat_partial.long(), diffusion.num_classes)
+    X_num_test, y_test = torch.Tensor(D.X_num['test']).to(device), torch.Tensor(D.y['test']).to(device)
+    if D.X_cat['test'] is not None:
+        X_cat_test = torch.Tensor(D.X_cat['test']).to(device).long()
+        X_cat_test_ohe = index_to_log_onehot(X_cat_test, diffusion.num_classes)
+        X_test = torch.cat([X_num_test, X_cat_test_ohe], dim=1)
+    else:
+        X_test = X_num_test
 
-    x_partial = torch.cat([x_num_partial, x_cat_partial_ohe], dim=1)
-    x_partial[:, -1] = torch.nan
-    x_gen = diffusion.sample_from_known(x_partial, torch.Tensor(y_labels).to(device))
+    #### Run selected experiment ####
+
+    def mask_for_imputing(col, type):     
+        n = len(col)   
+        if type == "MCAR":
+            mask = np.random.binomial(1, exp_prop, size=n)
+            return mask
+
+    impute_cat = lib.load_json(real_data_path + "/info.json")["impute_cat"]
+
+    if not impute_cat:
+        ## Desired imputation column is enforced to be at index 0 when data is imported
+        mask = mask_for_imputing(X_test[:, 0], exp_type)
+        X_test[mask, 0] = torch.nan
+    else:
+        ## Desired imputation feature is enforced to be first cat feature when data is imported
+        for i in range(diffusion.num_classes[0]):
+            mask = mask_for_imputing(X_cat_test, exp_type)
+            X_test[mask, num_numerical_features_ + 1 + i] = torch.nan
+    
+    X_gen = diffusion.sample_from_known(X_test, y_test)
+
+    #### Evaluate Imputation Performance ####
+
+    X_gen = X_gen.numpy()
+    if D.X_cat['test'] is not None:
+        X_true = torch.cat([X_num_test, X_cat_test], dim=1).cpu().numpy()
+    else:
+        X_true = X_num_test.cpu().numpy()
+
+    results_path = Path(parent_dir + "/imp_exp_results")
+    results_path.mkdir(exist_ok=True, parents=True)
+
+    def save_results(result):
+        save_path = results_path / f"results.json"
+        if not save_path.is_file():
+            results = {f"{exp_type}" : {f"{exp_prop}" : result}}
+            lib.dump_json(results, save_path)
+        else:
+            results = lib.load_json(save_path)
+            if exp_type in results.keys():
+                results[exp_type][exp_prop] = result
+            else:
+                results[exp_type] = {f"{exp_prop}" : result}
+
+    if not impute_cat:
+        imputed_values = X_gen[mask, 0] 
+        true_values = X_true[mask, 0]
+
+        rmse = lib.calculate_rmse(true_values, imputed_values, None)
+        save_results(rmse)
+    else:
+        imputed_values = X_gen[mask, num_numerical_features_ + 1]
+        true_values = X_true[mask, num_numerical_features_ + 1]
 
 
-    x_gen = x_gen.numpy()
-    x_true = torch.cat([x_num_partial, x_cat_partial], dim=1).numpy()
-    print(diffusion.num_classes)
-    print(np.shape(x_true))
-    print(np.sum((x_true - x_gen) != 0))
-    # num_numerical_features = num_numerical_features + int(
-    #     D.is_regression and not model_params["is_y_cond"])
-    #
-    # X_num_ = X_gen
-    # if num_numerical_features < X_gen.shape[1]:
-    #     np.save(os.path.join(parent_dir, 'X_cat_unnorm'), X_gen[:, num_numerical_features:])
-    #     # _, _, cat_encoder = lib.cat_encode({'train': X_cat_real}, T_dict['cat_encoding'], y_real, T_dict['seed'], True)
-    #     if T_dict['cat_encoding'] == 'one-hot':
-    #         X_gen[:, num_numerical_features:] = to_good_ohe(D.cat_transform.steps[0][1],
-    #                                                         X_num_[:, num_numerical_features:])
-    #     X_cat = D.cat_transform.inverse_transform(X_gen[:, num_numerical_features:])
-    #
-    # if num_numerical_features_ != 0:
-    #     # _, normalize = lib.normalize({'train' : X_num_real}, T_dict['normalization'], T_dict['seed'], True)
-    #     np.save(os.path.join(parent_dir, 'X_num_unnorm'), X_gen[:, :num_numerical_features])
-    #     X_num_ = D.num_transform.inverse_transform(X_gen[:, :num_numerical_features])
-    #     X_num = X_num_[:, :num_numerical_features]
-    #
-    #     X_num_real = np.load(os.path.join(real_data_path, "X_num_train.npy"), allow_pickle=True)
-    #     disc_cols = []
-    #     for col in range(X_num_real.shape[1]):
-    #         uniq_vals = np.unique(X_num_real[:, col])
-    #         if len(uniq_vals) <= 32 and ((uniq_vals - np.round(uniq_vals)) == 0).all():
-    #             disc_cols.append(col)
-    #     print("Discrete cols:", disc_cols)
-    #     if model_params['num_classes'] == 0:
-    #         y_gen = X_num[:, 0]
-    #         X_num = X_num[:, 1:]
-    #     if len(disc_cols):
-    #         X_num = round_columns(X_num_real, X_num, disc_cols)
-    #
-    # if num_numerical_features != 0:
-    #     print("Num shape: ", X_num.shape)
-    #     np.save(os.path.join(parent_dir, 'X_num_train'), X_num)
-    # if num_numerical_features < X_gen.shape[1]:
-    #     np.save(os.path.join(parent_dir, 'X_cat_train'), X_cat)
-    # np.save(os.path.join(parent_dir, 'y_train'), y_gen)
+
