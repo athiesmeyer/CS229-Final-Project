@@ -34,8 +34,9 @@ def main():
     parser.add_argument('--eval', action='store_true',  default=False)
     parser.add_argument('--change_val', action='store_true',  default=False)
     parser.add_argument('--sample_partial', action='store_true', default=False)
-    parser.add_argument('--type', type=str)
-    parser.add_argument('--proportion', type=float)
+    parser.add_argument('--to_impute', nargs="*", type=str)
+    parser.add_argument('--exp_type', nargs="*", type=str)
+    parser.add_argument('--exp_prop', nargs="*", type=float)
 
     args = parser.parse_args()
     raw_config = lib.load_config(args.config)
@@ -44,8 +45,17 @@ def main():
     else:
         device = torch.device('cuda:0')
 
-    exp_type = args.type
-    exp_prop = args.proportion
+    if args.sample_partial:
+        exp_type = args.exp_type
+        exp_prop = args.exp_prop
+        to_impute = args.to_impute
+
+        if len(exp_type) == 1:
+            exp_type = exp_type * len(to_impute)
+        if len(exp_prop) == 1:
+            exp_prop = exp_prop * len(to_impute)
+        if (len(exp_type) != len(to_impute)) or (len(exp_prop) != len(to_impute)):
+            raise Exception("Invalid imputation experiments input")
 
     timer = zero.Timer()
     timer.run()
@@ -98,7 +108,8 @@ def main():
             seed=raw_config['sample'].get('seed', 0),
             change_val=args.change_val,
             exp_type=exp_type,
-            exp_prop=exp_prop
+            exp_prop=exp_prop,
+            to_impute=to_impute
         )
 
     save_file(os.path.join(raw_config['parent_dir'], 'info.json'), os.path.join(raw_config['real_data_path'], 'info.json'))

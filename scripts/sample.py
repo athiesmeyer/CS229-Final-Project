@@ -8,6 +8,7 @@ from tab_ddpm.utils import FoundNANsError, index_to_log_onehot
 from utils_train import get_model, make_dataset
 from lib import round_columns
 import lib
+from sklearn.metrics import f1_score
 
 def to_good_ohe(ohe, X):
     indices = np.cumsum([0] + ohe._n_features_outs)
@@ -184,7 +185,8 @@ def sample_partial(
         seed=0,
         change_val=False,
         exp_type="MCAR",
-        exp_prop="0.1"
+        exp_prop="0.1",
+        to_impute=[]
 ):
     zero.improve_reproducibility(seed)
 
@@ -228,69 +230,66 @@ def sample_partial(
     _, empirical_class_dist = torch.unique(torch.from_numpy(D.y['train']), return_counts=True)
     
     #### Get test data and one hot encode categorical features ####
+    has_num = D.X_num is not None
+    has_cat = D.X_cat is not None
 
-    X_num_test, y_test = torch.Tensor(D.X_num['test']).to(device), torch.Tensor(D.y['test']).to(device)
-    if D.X_cat['test'] is not None:
+    y_test = torch.Tensor(D.y['test']).to(device)
+
+    # X_true is the test data matrix, X_test is the test data matrix with one hot encoded categorical features
+
+    if has_num and not has_cat:
+        X_test = torch.Tensor(D.X_num['test']).to(device)
+        X_true = X_test
+    elif has_cat and not has_num:
+        X_cat_test = torch.Tensor(D.X_cat['test']).to(device).long()
+        X_test = index_to_log_onehot(X_cat_test, diffusion.num_classes)
+        X_true = X_cat_test
+    else:
+        X_num_test = torch.Tensor(D.X_num['test']).to(device)
         X_cat_test = torch.Tensor(D.X_cat['test']).to(device).long()
         X_cat_test_ohe = index_to_log_onehot(X_cat_test, diffusion.num_classes)
         X_test = torch.cat([X_num_test, X_cat_test_ohe], dim=1)
-    else:
-        X_test = X_num_test
+        X_true = torch.cat([X_num_test, X_cat_test], dim=1)
 
     #### Run selected experiment ####
 
-    def mask_for_imputing(col, type):     
-        n = len(col)   
-        if type == "MCAR":
-            mask = np.random.binomial(1, exp_prop, size=n)
-            return mask
+    col_name_dict = lib.load_json(real_data_path + "/info.json")["col_name_dict"]
 
-    impute_cat = lib.load_json(real_data_path + "/info.json")["impute_cat"]
+    for i, col_name in enumerate(to_impute):
+        index = col_name_dict[col_name][0]
+        is_cat = col_name_dict[col_name][1]
 
-    if not impute_cat:
-        ## Desired imputation column is enforced to be at index 0 when data is imported
-        mask = mask_for_imputing(X_test[:, 0], exp_type)
-        X_test[mask, 0] = torch.nan
-    else:
-        ## Desired imputation feature is enforced to be first cat feature when data is imported
-        for i in range(diffusion.num_classes[0]):
-            mask = mask_for_imputing(X_cat_test, exp_type)
-            X_test[mask, num_numerical_features_ + 1 + i] = torch.nan
+        mask = lib.mask_for_imputing(X_true, index, exp_type[i], exp_prop[i])
+        if not is_cat:
+            X_test[mask, index] = torch.nan
+        else:
+            for j in range(diffusion.num_classes[index]):
+                X_test[mask, num_numerical_features_ + index + j] = torch.nan
     
     X_gen = diffusion.sample_from_known(X_test, y_test)
 
     #### Evaluate Imputation Performance ####
 
     X_gen = X_gen.numpy()
-    if D.X_cat['test'] is not None:
-        X_true = torch.cat([X_num_test, X_cat_test], dim=1).cpu().numpy()
-    else:
-        X_true = X_num_test.cpu().numpy()
+    X_true = X_true.cpu().numpy()
+    
+    for i, col_name in enumerate(to_impute):
+        index = col_name_dict[col_name][0]
+        is_cat = col_name_dict[col_name][1]
 
-    results_path = Path(parent_dir + "/imp_exp_results")
-    results_path.mkdir(exist_ok=True, parents=True)
+        if not is_cat:
+            imputed_values = X_gen[mask, index] 
+            true_values = X_true[mask, index]
 
-    def save_results(result):
-        save_path = results_path / f"results.json"
-        if not save_path.is_file():
-            results = {f"{exp_type}" : {f"{exp_prop}" : result}}
-            lib.dump_json(results, save_path)
+            result = lib.calculate_rmse(true_values, imputed_values, None)
         else:
-            results = lib.load_json(save_path)
-            if exp_type in results.keys():
-                results[exp_type][exp_prop] = result
-            else:
-                results[exp_type] = {f"{exp_prop}" : result}
+            imputed_values = X_gen[mask, num_numerical_features_ + index]
+            true_values = X_true[mask, num_numerical_features_ + index]
 
-    if not impute_cat:
-        imputed_values = X_gen[mask, 0] 
-        true_values = X_true[mask, 0]
+            result = f1_score(true_values, imputed_values, average="macro")
+        
+        lib.save_results(result, parent_dir, col_name, exp_type[i], exp_prop[i])
 
-        rmse = lib.calculate_rmse(true_values, imputed_values, None)
-        save_results(rmse)
-    else:
-        imputed_values = X_gen[mask, num_numerical_features_ + 1]
-        true_values = X_true[mask, num_numerical_features_ + 1]
 
 
 

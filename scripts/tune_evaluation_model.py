@@ -14,6 +14,7 @@ parser.add_argument('device', type=str)
 args = parser.parse_args()
 data_path = Path(f"data/{args.ds_name}")
 best_params = None
+device = args.device
 
 assert args.tune_type in ("cv", "val")
 
@@ -71,7 +72,7 @@ def suggest_catboost_params(trial):
         "od_pval": 0.001,
         "task_type": "CPU", # "GPU", may affect performance
         "thread_count": 4,
-        # "devices": "0", # for GPU
+        # "devices": device, # for GPU
     }
 
     return params
@@ -105,7 +106,7 @@ def objective(trial):
     if args.tune_type == "cv":
         score = 0.0
         for fold in range(5):
-            val_m1, val_m2, test_m1, test_m2 = train_func(
+            val_m1 = train_func(
                 parent_dir=None,
                 real_data_path=data_path / f"kfolds/{fold}",
                 eval_type="real",
@@ -113,7 +114,7 @@ def objective(trial):
                 params=params,
                 change_val=False,
                 device=args.device
-            )
+            )["val"]["score"]
             score += val_m1
         score /= 5
 
@@ -137,7 +138,8 @@ def objective(trial):
             params=params,
             change_val=False,
             device=args.device
-        ).get_val_score()
+        )["val"]["r2"]
+        print("SLFJ:SLFJ:SLFKJS:LFKJD:SKJDJF:", val_m2)
         score = val_m2
 
     return score

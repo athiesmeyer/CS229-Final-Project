@@ -7,5 +7,38 @@
     "test_size": 836,
     "n_num_features": 7,
     "n_cat_features": 1,
-    "impute_cat": 0
+    "col_name_dict": {
+        "Length": [
+            0,
+            false
+        ],
+        "Diameter": [
+            1,
+            false
+        ],
+        "Height": [
+            2,
+            false
+        ],
+        "Whole_weight": [
+            3,
+            false
+        ],
+        "Shucked_weight": [
+            4,
+            false
+        ],
+        "Viscera_weight": [
+            5,
+            false
+        ],
+        "Shell_weight": [
+            6,
+            false
+        ],
+        "Sex": [
+            0,
+            true
+        ]
+    }
 }

@@ -83,7 +83,7 @@ def train_catboost(
     print(f'Train size: {X["train"].shape}, Val size {X["val"].shape}')
 
     if params is None:
-        catboost_config = get_catboost_config(real_data_path, is_cv=False)
+        catboost_config = get_catboost_config(real_data_path, is_cv=True)
     else:
         catboost_config = params
 
@@ -140,6 +140,6 @@ def train_catboost(
     if parent_dir is not None:
         lib.dump_json(report, os.path.join(parent_dir, "results_catboost.json"))
     
-    return metrics_report
+    return report["metrics"]
 
     
