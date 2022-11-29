@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--to_impute', nargs="*", type=str)
     parser.add_argument('--exp_type', nargs="*", type=str)
     parser.add_argument('--exp_prop', nargs="*", type=float)
+    parser.add_argument('--compare', action='store_true', default=False)
 
     args = parser.parse_args()
     raw_config = lib.load_config(args.config)
@@ -49,6 +50,7 @@ def main():
         exp_type = args.exp_type
         exp_prop = args.exp_prop
         to_impute = args.to_impute
+        compare = args.compare
 
         if len(exp_type) == 1:
             exp_type = exp_type * len(to_impute)
@@ -109,7 +111,8 @@ def main():
             change_val=args.change_val,
             exp_type=exp_type,
             exp_prop=exp_prop,
-            to_impute=to_impute
+            to_impute=to_impute,
+            compare=compare
         )
 
     save_file(os.path.join(raw_config['parent_dir'], 'info.json'), os.path.join(raw_config['real_data_path'], 'info.json'))

@@ -6,5 +6,11 @@
     "n_cat_features": 0,
     "train_size": 62751,
     "val_size": 15688,
-    "test_size": 19610
+    "test_size": 19610,
+    "col_name_dict": {
+        "impute": [
+            9,
+            false
+        ]
+    }
 }

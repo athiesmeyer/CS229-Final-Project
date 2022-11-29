@@ -118,7 +118,7 @@ def sample(
     #         replacement=True
     #     )
     X_gen, y_gen = x_gen.numpy(), y_gen.numpy()
-
+    print(X_gen[:, 0])
     ###
     # X_num_unnorm = X_gen[:, :num_numerical_features]
     # lo = np.percentile(X_num_unnorm, 2.5, axis=0)
@@ -138,6 +138,7 @@ def sample(
         if T_dict['cat_encoding'] == 'one-hot':
             X_gen[:, num_numerical_features:] = to_good_ohe(D.cat_transform.steps[0][1],
                                                             X_num_[:, num_numerical_features:])
+                                                 
         X_cat = D.cat_transform.inverse_transform(X_gen[:, num_numerical_features:])
 
     if num_numerical_features_ != 0:
@@ -186,7 +187,8 @@ def sample_partial(
         change_val=False,
         exp_type="MCAR",
         exp_prop="0.1",
-        to_impute=[]
+        to_impute=[],
+        compare=False
 ):
     zero.improve_reproducibility(seed)
 
@@ -232,26 +234,31 @@ def sample_partial(
     #### Get test data and one hot encode categorical features ####
     has_num = D.X_num is not None
     has_cat = D.X_cat is not None
+    is_reg = D.is_regression
 
     y_test = torch.Tensor(D.y['test']).to(device)
 
-    # X_true is the test data matrix, X_test is the test data matrix with one hot encoded categorical features
+    # X_true is the original test data matrix (with categorical features label encoded)
+    # X_test is the test data matrix with transformed features
 
     if has_num and not has_cat:
         X_test = torch.Tensor(D.X_num['test']).to(device)
-        X_true = X_test
+        X_true = np.load(os.path.join(real_data_path, "X_num_test.npy"), allow_pickle=True)
     elif has_cat and not has_num:
         X_cat_test = torch.Tensor(D.X_cat['test']).to(device).long()
         X_test = index_to_log_onehot(X_cat_test, diffusion.num_classes)
-        X_true = X_cat_test
+        X_true = X_cat_test.cpu().numpy()
     else:
         X_num_test = torch.Tensor(D.X_num['test']).to(device)
         X_cat_test = torch.Tensor(D.X_cat['test']).to(device).long()
         X_cat_test_ohe = index_to_log_onehot(X_cat_test, diffusion.num_classes)
         X_test = torch.cat([X_num_test, X_cat_test_ohe], dim=1)
-        X_true = torch.cat([X_num_test, X_cat_test], dim=1)
 
-    #### Run selected experiment ####
+        X_num_true = np.load(os.path.join(real_data_path, "X_num_test.npy"), allow_pickle=True)
+        X_cat_true = X_cat_test.cpu().numpy()
+        X_true = np.concatenate([X_num_true, X_cat_true], axis=1)
+
+    #### Run selected experiments ####
 
     col_name_dict = lib.load_json(real_data_path + "/info.json")["col_name_dict"]
 
@@ -261,35 +268,54 @@ def sample_partial(
 
         mask = lib.mask_for_imputing(X_true, index, exp_type[i], exp_prop[i])
         if not is_cat:
-            X_test[mask, index] = torch.nan
+            X_test[mask, index + is_reg] = torch.nan
         else:
             for j in range(diffusion.num_classes[index]):
-                X_test[mask, num_numerical_features_ + index + j] = torch.nan
+                X_test[mask, num_numerical_features_ + index + is_reg + j] = torch.nan
     
-    X_gen = diffusion.sample_from_known(X_test, y_test)
+        X_gen = diffusion.sample_from_known(X_test, y_test)
 
-    #### Evaluate Imputation Performance ####
-
-    X_gen = X_gen.numpy()
-    X_true = X_true.cpu().numpy()
+        #### Evaluate Imputation Performance ####
     
-    for i, col_name in enumerate(to_impute):
-        index = col_name_dict[col_name][0]
-        is_cat = col_name_dict[col_name][1]
+        X_gen = X_gen.numpy()
+        #np.save("C:\\Users\\Alex\\Desktop\\synth_data.npy", X_gen)
+        if has_num:
+            X_gen[:, :num_numerical_features_] = D.num_transform.inverse_transform(X_gen[:, :num_numerical_features_])
+
+            X_num_real = np.load(os.path.join(real_data_path, "X_num_train.npy"), allow_pickle=True)
+            disc_cols = []
+            for col in range(X_num_real.shape[1]):
+                uniq_vals = np.unique(X_num_real[:, col])
+                if len(uniq_vals) <= 32 and ((uniq_vals - np.round(uniq_vals)) == 0).all():
+                    disc_cols.append(col)
+            
+            if len(disc_cols):
+                X_gen[:, is_reg:num_numerical_features_] = round_columns(X_num_real, X_gen[:, is_reg:num_numerical_features_], disc_cols)
 
         if not is_cat:
-            imputed_values = X_gen[mask, index] 
+            imputed_values = X_gen[mask, index + is_reg]
+            np.save("C:\\Users\\Alex\\Desktop\\imputed_values.npy", imputed_values)
             true_values = X_true[mask, index]
-
+            np.save("C:\\Users\\Alex\\Desktop\\true_values.npy", true_values)
             result = lib.calculate_rmse(true_values, imputed_values, None)
         else:
-            imputed_values = X_gen[mask, num_numerical_features_ + index]
-            true_values = X_true[mask, num_numerical_features_ + index]
+            imputed_values = X_gen[mask, num_numerical_features + index + is_reg]
+            true_values = X_true[mask, num_numerical_features + index]
 
             result = f1_score(true_values, imputed_values, average="macro")
         
         lib.save_results(result, parent_dir, col_name, exp_type[i], exp_prop[i])
 
+        if compare:
+            if not is_cat:
+                train_data = np.load(os.path.join(real_data_path, "X_num_train.npy"))
+                test_data = X_num_true
+            else:
+                train_data = np.load(os.path.join(real_data_path, "X_cat_train.npy"))
+                test_data = X_cat_true
+
+            result = lib.mean_mode_impute(train_data, test_data, is_cat, index, mask)
+            lib.save_results(result, parent_dir, col_name, exp_type[i], exp_prop[i], method="mean_mode")
 
 
 

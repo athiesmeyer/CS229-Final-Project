@@ -7,5 +7,11 @@
     "train_size": 6318,
     "val_size": 1580,
     "test_size": 1975,
-    "n_classes": 5
+    "n_classes": 5,
+    "col_name_dict": {
+        "impute": [
+            23,
+            false
+        ]
+    }
 }
