@@ -17,10 +17,10 @@ For this command specifically, navigate to exp/churn2/ddpm_cb_best/config.toml a
 
 Finally, you may get an error message about the type of tensor used for indexing. I believe I navigated to where the bug threw the error and just added .long() methods but I can't find where. Let me know if you get this error.
 
-## Run a single experiment and compare results to mean/mode
+### Run a single experiment and compare results to mean/mode
 python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --sample_partial --to_impute Length --exp_type MCAR --exp_prop 0.1 --compare
 
-## Run all experiments and compare results to mean/mode
+### Run all experiments and compare results to mean/mode
 python scripts/run_exps.py abalone Length
 
 (Note: if using a provided dataset besides abalone, the --to_impute column is named "impute". Col names can be changed in the info.json file in the data folder. Also, the save results function is a bit wonky and may throw an error if previous results already exist, feel free to improve)
