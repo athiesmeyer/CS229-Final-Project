@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 import pandas as pd
 from sklearn.metrics import f1_score
+from scipy.stats import mode
 
 #### NOTE: The generation of corruption patterns for MCAR, MNAR, and MAR is adapted from the jenga package,
 #### credit to https://github.com/schelterlabs/jenga
@@ -37,7 +38,7 @@ def save_results(result, parent_dir, col_name, exp_type, exp_prop, method="tddpm
         if col_name in results.keys():
             if exp_type in results[col_name].keys():
                 if prop in results[col_name][exp_type].keys():
-                    results[col_name][exp_type][prop][method] = result
+                    results[col_name][exp_type][prop].update({method : result})
                 else:
                     results[col_name][exp_type][prop] = {f"{method}"  : result}
             else:
@@ -53,8 +54,10 @@ def mean_mode_impute(train_data, test_data, is_cat, index, mask):
         true_values = test_data[mask, index]
         result = lib.calculate_rmse(true_values, imputed_values, None)
     else:
-        imputed_values = np.repeat(np.mode(train_data[:, index], len(mask)))
+        imputed_values = np.repeat(mode(train_data[:, index])[0][0], len(mask))
         true_values = test_data[mask, index]
+        print(type(imputed_values[0]), imputed_values[0])
+        print(type(true_values[0]), true_values[0])
         result = f1_score(true_values, imputed_values)
 
     return result

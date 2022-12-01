@@ -9,7 +9,7 @@
     "val_size": 14000,
     "col_name_dict": {
         "impute": [
-            3,
+            0,
             true
         ]
     }
