@@ -23,4 +23,5 @@ python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --sampl
 ### Run all experiments and compare results to mean/mode
 python scripts/run_exps.py abalone Length
 
+Results are stored in exp/abalone/ddpm_cb_best/imp_exp_results
 (Note: if using a provided dataset besides abalone, the --to_impute column is named "impute". Col names can be changed in the info.json file in the data folder. Also, the save results function is a bit wonky and may throw an error if previous results already exist, feel free to improve)
