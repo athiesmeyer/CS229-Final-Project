@@ -977,6 +977,12 @@ class GaussianMultinomialDiffusion(torch.nn.Module):
         b = x.shape[0]
         known_values = ~torch.isnan(x)
 
+        known_num = known_values[:, :self.num_numerical_features]
+        known_cat = known_values[:, self.num_numerical_features:]
+        x_num = x[:, :self.num_numerical_features]
+        x_cat = x[:, self.num_numerical_features:]
+
+
         device = self.log_alpha.device
         z_norm = torch.randn((b, self.num_numerical_features), device=device)
 
@@ -991,8 +997,18 @@ class GaussianMultinomialDiffusion(torch.nn.Module):
             print(f'Sample timestep {i:4d}', end='\r')
             t = torch.full((b,), i, device=device, dtype=torch.long)
 
+            noise = np.zeros_like(x_num)
+            # noise = torch.randn_like(x_num)
+            z_norm_known = self.gaussian_q_sample(x_num, t, noise=noise)
+            z_norm[known_num] = z_norm_known[known_num]
+
+            if has_cat:
+                # log_z_known = self.q_sample(log_x_start=x_cat, t=t)
+                # log_z[known_cat] = log_z_known[known_cat]
+                log_z[known_cat] = x_cat[known_cat]
+
             model_input = torch.cat([z_norm, log_z], dim=1).float()
-            model_input[known_values] = x[known_values]
+            # model_input[known_values] = x[known_values]
 
             model_out = self._denoise_fn(
                 model_input,
