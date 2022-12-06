@@ -1,9 +1,9 @@
-parent_dir = "exp/abalone_test"
-real_data_path = "data\\abalone_test"
-num_numerical_features = 7
+parent_dir = "exp/diamonds"
+real_data_path = "data/diamonds"
+num_numerical_features = 6
 model_type = "mlp"
 seed = 0
-device = "cuda:0"
+device = "mps"
 
 [model_params]
 num_classes = 0

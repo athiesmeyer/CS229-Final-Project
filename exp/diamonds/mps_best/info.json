@@ -1,0 +1,48 @@
+{
+    "name": "diamonds",
+    "id": "diamonds--id",
+    "task_type": "regression",
+    "n_num_features": 6,
+    "n_cat_features": 3,
+    "train_size": 34521,
+    "val_size": 8630,
+    "test_size": 10789,
+    "col_name_dict": {
+        "depth": [
+            0,
+            false
+        ],
+        "table": [
+            1,
+            false
+        ],
+        "price": [
+            2,
+            false
+        ],
+        "x": [
+            3,
+            false
+        ],
+        "y": [
+            4,
+            false
+        ],
+        "z": [
+            5,
+            false
+        ],
+        "cut": [
+            0,
+            true
+        ],
+        "color": [
+            1,
+            true
+        ],
+        "clarity": [
+            2,
+            true
+        ]
+    }
+}
