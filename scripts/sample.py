@@ -247,44 +247,55 @@ def sample_partial(
         X_true = X_num_true
     elif has_cat and not has_num:
         X_cat_test = torch.Tensor(D.X_cat['test']).to(device).long()
+        for i in range(X_cat_test.shape[1]):
+            n_classes = diffusion.num_classes[i]
+            X_cat_test = X_cat_test[X_cat_test[:, i] < n_classes, :]
+            y_test = y_test[rows]
         X_test = index_to_log_onehot(X_cat_test, diffusion.num_classes)
 
         X_cat_true = X_cat_test.cpu().numpy()
         X_true = X_cat_true
     else:
+        X_num_true = np.load(os.path.join(real_data_path, "X_num_test.npy"), allow_pickle=True)
+
         X_num_test = torch.Tensor(D.X_num['test']).to(device)
         X_cat_test = torch.Tensor(D.X_cat['test']).to(device).long()
+        for i in range(X_cat_test.shape[1]):
+            n_classes = diffusion.num_classes[i]
+            rows = X_cat_test[:, i] < n_classes
+            X_cat_test = X_cat_test[rows, :]
+            X_num_test = X_num_test[rows, :]
+            X_num_true = X_num_true[rows.cpu().numpy(), :]
+            y_test = y_test[rows]
         X_cat_test_ohe = index_to_log_onehot(X_cat_test, diffusion.num_classes)
         X_test = torch.cat([X_num_test, X_cat_test_ohe], dim=1)
 
-        X_num_true = np.load(os.path.join(real_data_path, "X_num_test.npy"), allow_pickle=True)
         X_cat_true = X_cat_test.cpu().numpy()
         X_true = np.concatenate([X_num_true, X_cat_true], axis=1)
 
     #### Run selected experiments ####
 
-    col_name_dict = lib.load_json(real_data_path + "/info.json")["col_name_dict"]
+    col_name_dict = lib.load_json(os.path.join(real_data_path, "info.json"))["col_name_dict"]
     list_of_masks = []
     for i, col_name in enumerate(to_impute):
         index = col_name_dict[col_name][0]
         is_cat = col_name_dict[col_name][1]
 
-        mask = lib.mask_for_imputing(X_true, index, exp_type[i], exp_prop[i])
-        list_of_masks += [mask]
-        if not is_cat:
-            X_test[mask, index + is_reg] = torch.nan
-        else:
+        if is_cat:
+            mask = lib.mask_for_imputing(X_true, index, exp_type[i], exp_prop[i])
             for j in range(diffusion.num_classes[index]):
-                X_test[mask, num_numerical_features_ + index + is_reg + j] = torch.nan
+                X_test[mask, num_numerical_features + index + is_reg + j] = torch.nan
+        else:
+            mask = lib.mask_for_imputing(X_true, index, exp_type[i], exp_prop[i])
+            X_test[mask, index + is_reg] = torch.nan
+        list_of_masks += [mask]
     
-    X_gen = diffusion.sample_from_known(X_test, y_test)
+    X_gen = diffusion.sample_from_known(X_test, y_test).numpy()
 
     #### Evaluate Imputation Performance ####
-
-    X_gen = X_gen.numpy()
-    #np.save("C:\\Users\\Alex\\Desktop\\synth_data.npy", X_gen)
+    
     if has_num:
-        X_gen[:, :num_numerical_features_] = D.num_transform.inverse_transform(X_gen[:, :num_numerical_features_])
+        X_gen[:, :(num_numerical_features + is_reg)] = D.num_transform.inverse_transform(X_gen[:, :(num_numerical_features + is_reg)])
 
         X_num_real = np.load(os.path.join(real_data_path, "X_num_train.npy"), allow_pickle=True)
         disc_cols = []
@@ -294,37 +305,47 @@ def sample_partial(
                 disc_cols.append(col)
             
         if len(disc_cols):
-            X_gen[:, is_reg:num_numerical_features_] = round_columns(X_num_real, X_gen[:, is_reg:num_numerical_features_], disc_cols)
+            X_gen[:, is_reg:(num_numerical_features + is_reg)] = round_columns(X_num_real, X_gen[:, is_reg:(num_numerical_features + is_reg)], disc_cols)
 
     for i, col_name in enumerate(to_impute):
         index = col_name_dict[col_name][0]
         is_cat = col_name_dict[col_name][1]
         
         mask = list_of_masks[i]
-        if not is_cat:
+        if is_cat:
+            imputed_values = X_gen[mask, num_numerical_features + index + is_reg]
+            true_values = X_true[mask, num_numerical_features + index]
+
+            result = f1_score(true_values, imputed_values, average="macro")
+        else:
             imputed_values = X_gen[mask, index + is_reg]
             np.save("C:\\Users\\Alex\\Desktop\\imputed_values.npy", imputed_values)
             true_values = X_true[mask, index]
             np.save("C:\\Users\\Alex\\Desktop\\true_values.npy", true_values)
             result = lib.calculate_rmse(true_values, imputed_values, None)
-        else:
-            imputed_values = X_gen[mask, num_numerical_features + index + is_reg]
-            true_values = X_true[mask, num_numerical_features + index]
-
-            result = f1_score(true_values, imputed_values, average="macro")
         
         lib.save_results(result, parent_dir, col_name, exp_type[i], exp_prop[i])
 
         if compare:
-            if not is_cat:
-                train_data = np.load(os.path.join(real_data_path, "X_num_train.npy"))
-                test_data = X_num_true
+            if has_num and not has_cat:
+                X_num_train =  np.load(os.path.join(real_data_path, "X_num_train.npy"))
+                X_train = X_num_train
+            elif has_cat and not has_num:
+                X_cat_train = D.X_cat["train"]
+                X_train = X_cat_train
             else:
-                train_data = D.X_cat["train"]
-                test_data = X_cat_true
+                X_num_train =  np.load(os.path.join(real_data_path, "X_num_train.npy"))
+                X_cat_train = D.X_cat["train"]
+                X_train = np.concatenate([X_num_train, X_cat_train], axis=1)
 
-            result = lib.mean_mode_impute(train_data, test_data, is_cat, index, mask)
-            lib.save_results(result, parent_dir, col_name, exp_type[i], exp_prop[i], method="mean_mode")
+            if is_cat:
+                mean_mode_result = lib.mean_mode_impute(X_cat_train, X_cat_true, is_cat, index, mask)
+                random_forest_result = lib.random_forest_impute(X_train, X_true, is_cat, index + num_numerical_features, mask)
+            else:
+                mean_mode_result = lib.mean_mode_impute(X_num_train, X_num_true, is_cat, index, mask)
+                random_forest_result = lib.random_forest_impute(X_train, X_true, is_cat, index, mask)
 
+            lib.save_results(mean_mode_result, parent_dir, col_name, exp_type[i], exp_prop[i], method="mean_mode")
+            lib.save_results(random_forest_result, parent_dir, col_name, exp_type[i], exp_prop[i], method="random forest")
 
 
