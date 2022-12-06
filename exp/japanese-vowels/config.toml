@@ -1,9 +1,9 @@
-parent_dir = "exp/delta_elevators"
-real_data_path = "data\\delta_elevators"
-num_numerical_features = 6
+parent_dir = "exp/japanese-vowels"
+real_data_path = "data/japanese-vowels"
+num_numerical_features = 13
 model_type = "mlp"
 seed = 0
-device = "cuda:0"
+device = "cpu"
 
 [model_params]
 num_classes = 0
