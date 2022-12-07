@@ -1006,16 +1006,6 @@ class GaussianMultinomialDiffusion(torch.nn.Module):
                 # log_z[known_cat] = log_z_known[known_cat]
                 log_z[known_cat] = x_cat[known_cat]
 
-            noise = np.zeros_like(x_num)
-            # noise = torch.randn_like(x_num)
-            z_norm_known = self.gaussian_q_sample(x_num, t, noise=noise)
-            z_norm[known_num] = z_norm_known[known_num]
-
-            if has_cat:
-                # log_z_known = self.q_sample(log_x_start=x_cat, t=t)
-                # log_z[known_cat] = log_z_known[known_cat]
-                log_z[known_cat] = x_cat[known_cat]
-
             model_input = torch.cat([z_norm, log_z], dim=1).float()
             # model_input[known_values] = x[known_values]
 

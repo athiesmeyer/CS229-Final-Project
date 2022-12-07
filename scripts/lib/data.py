@@ -221,14 +221,14 @@ def normalize(
             subsample=1e9,
             random_state=seed,
         )
-        # noise = 1e-3
-        # if noise > 0:
-        #     assert seed is not None
-        #     stds = np.std(X_train, axis=0, keepdims=True)
-        #     noise_std = noise / np.maximum(stds, noise)  # type: ignore[code]
-        #     X_train = X_train + noise_std * np.random.default_rng(seed).standard_normal(
-        #         X_train.shape
-        #     )
+        noise = 1e-3
+        if noise > 0:
+            assert seed is not None
+            stds = np.std(X_train, axis=0, keepdims=True)
+            noise_std = noise / np.maximum(stds, noise)  # type: ignore[code]
+            X_train = X_train + noise_std * np.random.default_rng(seed).standard_normal(
+                X_train.shape
+            )
     else:
         util.raise_unknown('normalization', normalization)
     normalizer.fit(X_train)

@@ -1,4 +1,7 @@
+import logging
 import subprocess
+import sys
+
 import lib
 import os
 import optuna
@@ -90,27 +93,54 @@ def objective(trial):
     for sample_seed in range(n_datasets):
         base_config['sample']['seed'] = sample_seed
         lib.dump_config(base_config, exps_path / 'config.toml')
-        
-        subprocess.run(['python', f'{pipeline}', '--config', f'{exps_path / "config.toml"}', '--sample', '--eval', '--change_val'], check=True)
+        try:
+            subprocess.run(['python3.9', f'{pipeline}', '--config', f'{exps_path / "config.toml"}', '--sample', '--eval', '--change_val'], check=True)
 
-        report_path = str(Path(base_config['parent_dir']) / f'results_{args.eval_model}.json')
-        report = lib.load_json(report_path)
+            report_path = str(Path(base_config['parent_dir']) / f'results_{args.eval_model}.json')
+            report = lib.load_json(report_path)
 
-        if 'r2' in report['metrics']['val']:
-            score += report['metrics']['val']['r2']
-        else:
-            score += report['metrics']['val']['macro avg']['f1-score']
+            if 'r2' in report['metrics']['val']:
+                score += report['metrics']['val']['r2']
+            else:
+                score += report['metrics']['val']['macro avg']['f1-score']
+            print(score)
+        except:
+            print('threw an error')
+            score -= 1000
 
     shutil.rmtree(exps_path / f"{trial.number}")
 
     return score / n_datasets
 
+optuna.logging.get_logger('optuna').addHandler(logging.StreamHandler(sys.stdout))
+study_name = ds_name
+storage_name = f'sqlite:///{study_name}_tune_study.db'
+
+if os.path.isfile(f'{study_name}_tune_study.db'):
+    print('Backup file exists')
+    # get number of remaining trials
+    import sqlite3
+    con = sqlite3.connect(f'{study_name}_tune_study.db')
+    cur = con.cursor()
+    result = cur.execute('SELECT COUNT(study_id) FROM trials WHERE state LIKE "COMPLETE"')
+    existing_trials = result.fetchone()
+    if existing_trials is not None:
+        remaining_trials = 50 - existing_trials[0]
+    else:
+        remaining_trials = 50
+    con.close()
+else:
+    remaining_trials = 50
+
 study = optuna.create_study(
     direction='maximize',
     sampler=optuna.samplers.TPESampler(seed=0),
+    study_name=study_name,
+    storage=storage_name,
+    load_if_exists=True
 )
 
-study.optimize(objective, n_trials=50, show_progress_bar=True)
+study.optimize(objective, n_trials=remaining_trials, show_progress_bar=True)
 
 best_config_path = parent_path / f'{prefix}_best/config.toml'
 best_config = study.best_trial.user_attrs['config']
