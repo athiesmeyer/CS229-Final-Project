@@ -1,3 +1,4 @@
+### CS229 Code Starts Here ###
 """
 2022-12-07 Linus Hein.
 """
@@ -52,3 +53,4 @@ axs[1].set_title('Normalize w/ noise')
 axs[1].grid()
 # plt.savefig('normalization.png', dpi=400)
 plt.show()
+### CS229 Code Ends Here ###
