@@ -15,7 +15,7 @@ The files that we added for our data imputation method are listed below:
 
 
 In addition, we edited many existing files, with particular attention paid to ```scripts/sample.py``` and ```scripts/tab_ddpm/gaussian_multinomial_diffsuion.py```. 
-Wherever we have edited the original TabDDPM authors' code, we have tried to clearly comment to that effect. All other code should be assumed to be due to Kotelnikov et al.
+Wherever we have edited the original TabDDPM authors' code, we have tried to clearly comment to that effect. The implementation of missingness patterns is adapted from the [jenga package](https://pypi.org/project/jenga/), due to Sebastian Schelter.  All other code should be assumed to be due to Kotelnikov et al.
 
 
 ### Guidelines to Run Code:
