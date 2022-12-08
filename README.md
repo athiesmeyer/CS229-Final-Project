@@ -4,9 +4,12 @@
 Most of the above code is due to Kotelnikov et al., 2022 in association with their paper [TabDDPM: Modeling Tabular Data with Diffusion Models](https://arxiv.org/pdf/2209.15421.pdf). The repo for that project can be found [here](https://github.com/rotot0/tab-ddpm).
 
 The files that we added for our data imputation method are listed below:
-* scripts/import_data.py
-* scripts/run_exps.py
-* scripts/lib/impute_utils.py
+scripts/import_data.py  
+
+scripts/run_exps.py  
+
+scripts/lib/impute_utils.py  
+
 In addition, we edited many existing files, with particular attention paid to scripts/sample.py and scripts/tab_ddpm/gaussian_multinomial_diffsuion.py. 
 Wherever we have edited the original TabDDPM authors' code, we have tried to clearly comment to that effect. All other code should be assumed to be due to Kotelnikov et al.
 
