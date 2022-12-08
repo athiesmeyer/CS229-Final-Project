@@ -1,27 +1,43 @@
-# CS229-Final-Project
+# CS229 Final Project: Diffusion Models for Data Imputation
 
-Guidelines to Run Code:
-Follow directions at https://github.com/rotot0/tab-ddpm, except use 
-pip install torch==1.10.1+cu113 -f https://download.pytorch.org/whl/torch_stable.html
-instead of cu111 version of cuda (couldn't get it to work).
+### Attribution:
+Most of the above code is due to Kotelnikov et al., 2022 in association with their paper [TabDDPM: Modeling Tabular Data with Diffusion Models](https://arxiv.org/pdf/2209.15421.pdf). The repo for that project can be found [here](https://github.com/rotot0/tab-ddpm).
 
-Again, follow their instructions to download the datasets (on Windows I manually extracted the data tar ball).
+The files that we added for our data imputation method are listed below:
+scripts/import_data.py
+scripts/run_exps.py
+scripts/lib/impute_utils.py
+In addition, we edited many existing files, with particular attention paid to scripts/sample.py and scripts/tab_ddpm/gaussian_multinomial_diffsuion.py. 
+Wherever we have edited the original TabDDPM authors' code, we have tried to clearly comment to that effect. All other code should be assumed to be due to Kotelnikov et al.
 
-If on Windows, copy the data, lib, tab_ddpm folders into the script folder (necessary for me to prevent failed import statements, didn't have the issue on Mac).
 
-I focused on running the line 
-python scripts/pipeline.py --config exp/churn2/ddpm_cb_best/config.toml --train
-and have not tested other commands (this experiment ended up taking my laptop ~2 and a half hours to run)
+### Guidelines to Run Code:
+See the [original repo](https://github.com/rotot0/tab-ddpm) for instructions on how to set up your environment and download pretuned datasets. Whenever attempting to use the TabDDPM model, the desired device to use (cpu, cuda:0 etc.) must be specified in the config.toml file associated with the type of experiment you are trying to run.
 
-For this command specifically, navigate to exp/churn2/ddpm_cb_best/config.toml and change device to whatever you need (if you don't have an NVIDIA gpu, I think you have to change to CPU. I had to change mine from "cuda:1" to "cuda:0" for it to work because my GPU only has one thread)
+The following example commands walk through a typical use of our method.
 
-Finally, you may get an error message about the type of tensor used for indexing. I believe I navigated to where the bug threw the error and just added .long() methods but I can't find where. Let me know if you get this error.
+Imports a dataset from a csv file. Splits the data into training, validation and test sets and splits numerical features from categorical features, saving as .npy files. Saves column names in a dictionary for future use. Creates an info.json file with dataset information. Additionally splits data into five folds for cross-validation. 
+  python scripts/import_data.py [path] [ds_name] [task_type] [target] [--cat_features] [--to_drop]
+  python scripts/import_data.py "datasets/abalone.csv" abalone regression Rings --cat_features Sex --to_drop id
 
-### Run a single experiment and compare results to mean/mode
-python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --sample_partial --to_impute Length --exp_type MCAR --exp_prop 0.1 --compare
+Tunes hyperparameters for the catboost model on the chosen dataset with cross-validation.
+  python scripts/tune_evaluation_model.py [ds_name] [model] [tune_type] [device]
+  python scripts/tune_evaluation_model.py abalone catboost cv cuda:0
 
-### Run all experiments and compare results to mean/mode
-python scripts/run_exps.py abalone Length
+Tunes parameters of the TabDDPM model on the chosen dataset.
+  python scripts/tune_ddpm.py [ds_name] [train_size] [eval_type] [eval_model] [prefix]
+  python scripts/tune_ddpm.py abalone 2672 synthetic catboost ddpm_cb
+  
+Trains the TabDDPM model given a specific set of hyperparameters.
+  python scripts/pipeline.py [--config] [--train]
+  python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --train
+ 
+Runs a single imputation experiment on chosen features with missingness pattern --exp_type and proportion of missing data --exp_prop. Compares to mean/mode and random forest baselines.
+  python scripts/pipeline.py [--config] [--sample_partial] [--to_impute] [exp_type] [--exp_prop] [--compare]
+  python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --sample_partial --to_impute Length --exp_type MCAR --exp_prop 0.1 --compare
 
-Results are stored in exp/abalone/ddpm_cb_best/imp_exp_results
-(Note: if using a provided dataset besides abalone, the --to_impute column is named "impute". Col names can be changed in the info.json file in the data folder. Also, the save results function is a bit wonky and may throw an error if previous results already exist, feel free to improve)
+For our results generation, this runs all desired experiments on a particular feature, with comparison enabled.
+  python scripts/run_exps.py [ds_name] [to_impute]
+  python scripts/run_exps.py abalone Length
+
+Results are stored in exp/{ds_name}/ddpm_cb_best/imp_exp_results
