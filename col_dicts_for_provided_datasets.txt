@@ -1,3 +1,5 @@
+Reference file showing which feature of each provided dataset was imputed. For abalone, Length was used.
+
 abalone : 
 "col_name_dict": {
         "Length": [
