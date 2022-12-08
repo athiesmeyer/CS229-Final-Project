@@ -3,7 +3,8 @@
 ### Attribution:
 Most of the above code is due to Kotelnikov et al., 2022 in association with their paper [TabDDPM: Modeling Tabular Data with Diffusion Models](https://arxiv.org/pdf/2209.15421.pdf). The repo for that project can be found [here](https://github.com/rotot0/tab-ddpm).
 
-The files that we added for our data imputation method are listed below:
+The files that we added for our data imputation method are listed below:  
+
 scripts/import_data.py  
 
 scripts/run_exps.py  
