@@ -1,3 +1,5 @@
+### CS229 Code Starts Here ###
+
 import lib
 import numpy as np
 from pathlib import Path
@@ -86,3 +88,5 @@ def random_forest_impute(train_data, test_data, is_cat, index, mask):
         result = lib.calculate_rmse(true_values, imputed_values, None)
     
     return result
+
+### CS229 Code Ends Here ###
