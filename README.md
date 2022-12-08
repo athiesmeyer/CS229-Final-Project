@@ -27,23 +27,32 @@ python scripts/import_data.py "datasets/abalone.csv" abalone regression Rings --
 ```
 
 Tunes hyperparameters for the catboost model on the chosen dataset with cross-validation.
-  python scripts/tune_evaluation_model.py [ds_name] [model] [tune_type] [device]
-  python scripts/tune_evaluation_model.py abalone catboost cv cuda:0
+```
+python scripts/tune_evaluation_model.py [ds_name] [model] [tune_type] [device]
+python scripts/tune_evaluation_model.py abalone catboost cv cuda:0
+```
 
 Tunes parameters of the TabDDPM model on the chosen dataset.
-  python scripts/tune_ddpm.py [ds_name] [train_size] [eval_type] [eval_model] [prefix]
-  python scripts/tune_ddpm.py abalone 2672 synthetic catboost ddpm_cb
-  
+```
+python scripts/tune_ddpm.py [ds_name] [train_size] [eval_type] [eval_model] [prefix]
+python scripts/tune_ddpm.py abalone 2672 synthetic catboost ddpm_cb
+```
+
 Trains the TabDDPM model given a specific set of hyperparameters.
-  python scripts/pipeline.py [--config] [--train]
-  python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --train
- 
+```
+python scripts/pipeline.py [--config] [--train]
+python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --train
+```
+
 Runs a single imputation experiment on chosen features with missingness pattern --exp_type and proportion of missing data --exp_prop. Compares to mean/mode and random forest baselines.
-  python scripts/pipeline.py [--config] [--sample_partial] [--to_impute] [exp_type] [--exp_prop] [--compare]
-  python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --sample_partial --to_impute Length --exp_type MCAR --exp_prop 0.1 --compare
+```
+python scripts/pipeline.py [--config] [--sample_partial] [--to_impute] [exp_type] [--exp_prop] [--compare]
+python scripts/pipeline.py --config exp/abalone/ddpm_cb_best/config.toml --sample_partial --to_impute Length --exp_type MCAR --exp_prop 0.1 --compare
+```
 
 For our results generation, this runs all desired experiments on a particular feature, with comparison enabled.
-  python scripts/run_exps.py [ds_name] [to_impute]
-  python scripts/run_exps.py abalone Length
-
+```
+python scripts/run_exps.py [ds_name] [to_impute]
+python scripts/run_exps.py abalone Length
+```
 Results are stored in exp/{ds_name}/ddpm_cb_best/imp_exp_results
