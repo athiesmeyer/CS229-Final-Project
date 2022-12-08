@@ -43,7 +43,7 @@ def main():
     parser.add_argument('--exp_type', nargs="*", type=str)
     parser.add_argument('--exp_prop', nargs="*", type=float)
     parser.add_argument('--compare', action='store_true', default=False)
-    ### CS229 Code Starts Here ###
+    ### CS229 Code Ends Here ###
     
     args = parser.parse_args()
     raw_config = lib.load_config(args.config)
@@ -67,7 +67,7 @@ def main():
             exp_prop = exp_prop * len(to_impute)
         if (len(exp_type) != len(to_impute)) or (len(exp_prop) != len(to_impute)):
             raise Exception("Invalid imputation experiments input")
-    ### CS229 Code Starts Here ###
+    ### CS229 Code Ends Here ###
 
     timer = zero.Timer()
     timer.run()
@@ -126,7 +126,7 @@ def main():
             to_impute=to_impute,
             compare=compare
         )
-    ### CS229 Code Starts Here ###
+    ### CS229 Code Ends Here ###
 
     save_file(os.path.join(raw_config['parent_dir'], 'info.json'), os.path.join(raw_config['real_data_path'], 'info.json'))
     if args.eval:
