@@ -21,8 +21,10 @@ See the [original repo](https://github.com/rotot0/tab-ddpm) for instructions on 
 The following example commands walk through a typical use of our method.
 
 Imports a dataset from a csv file. Splits the data into training, validation and test sets and splits numerical features from categorical features, saving as .npy files. Saves column names in a dictionary for future use. Creates an info.json file with dataset information. Additionally splits data into five folds for cross-validation. 
+'''
   python scripts/import_data.py [path] [ds_name] [task_type] [target] [--cat_features] [--to_drop]
   python scripts/import_data.py "datasets/abalone.csv" abalone regression Rings --cat_features Sex --to_drop id
+'''
 
 Tunes hyperparameters for the catboost model on the chosen dataset with cross-validation.
   python scripts/tune_evaluation_model.py [ds_name] [model] [tune_type] [device]
