@@ -221,6 +221,8 @@ def normalize(
             subsample=1e9,
             random_state=seed,
         )
+        # Linus Hein: uncommented this section which adds a small amount of noise to train the
+        # Quantile transformation
         noise = 1e-3
         if noise > 0:
             assert seed is not None

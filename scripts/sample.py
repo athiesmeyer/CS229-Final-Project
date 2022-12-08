@@ -5,7 +5,7 @@ import zero
 import os
 from tab_ddpm.gaussian_multinomial_diffsuion import GaussianMultinomialDiffusion
 from tab_ddpm.utils import FoundNANsError, index_to_log_onehot
-from utils_train import get_model, make_dataset
+from utils_train import get_model, make_dataset, concat_y_to_X
 from lib import round_columns
 import lib
 from sklearn.metrics import f1_score
@@ -138,7 +138,7 @@ def sample(
         if T_dict['cat_encoding'] == 'one-hot':
             X_gen[:, num_numerical_features:] = to_good_ohe(D.cat_transform.steps[0][1],
                                                             X_num_[:, num_numerical_features:])
-                                                 
+
         X_cat = D.cat_transform.inverse_transform(X_gen[:, num_numerical_features:])
 
     if num_numerical_features_ != 0:
@@ -190,6 +190,10 @@ def sample_partial(
         to_impute=[],
         compare=False
 ):
+    """
+    Added by Alex Thiesmeyer, Linus Hein and Johannes Fuest, based on the above
+    sample(...) function.
+    """
     zero.improve_reproducibility(seed)
 
     T = lib.Transformations(**T_dict)
@@ -230,7 +234,7 @@ def sample_partial(
     diffusion.eval()
 
     _, empirical_class_dist = torch.unique(torch.from_numpy(D.y['train']), return_counts=True)
-    
+
     #### Get test data and one hot encode categorical features ####
     has_num = D.X_num is not None
     has_cat = D.X_cat is not None
@@ -296,11 +300,11 @@ def sample_partial(
             mask = lib.mask_for_imputing(X_true, is_reg + index, exp_type[i], exp_prop[i])
             X_test[mask, index + is_reg] = torch.nan
         list_of_masks += [mask]
-    
+
     X_gen = diffusion.sample_from_known(X_test, y_test).numpy()
 
     #### Evaluate Imputation Performance ####
-    
+
     if has_num:
         X_gen[:, :(num_numerical_features + is_reg)] = D.num_transform.inverse_transform(X_gen[:, :(num_numerical_features + is_reg)])
 
@@ -313,14 +317,14 @@ def sample_partial(
             uniq_vals = np.unique(X_num_real[:, col])
             if len(uniq_vals) <= 32 and ((uniq_vals - np.round(uniq_vals)) == 0).all():
                 disc_cols.append(col)
-            
+
         if len(disc_cols):
             X_gen[:, :(num_numerical_features + is_reg)] = round_columns(X_num_real, X_gen[:, :(num_numerical_features + is_reg)], disc_cols)
 
     for i, col_name in enumerate(to_impute):
         index = col_name_dict[col_name][0]
         is_cat = col_name_dict[col_name][1]
-        
+
         mask = list_of_masks[i]
         if is_cat:
             imputed_values = X_gen[mask, num_numerical_features + index + is_reg]
@@ -333,7 +337,7 @@ def sample_partial(
             true_values = X_true[mask, index + is_reg]
             np.save("/Users/linus/workspace/CS229-Final-Project/output/true_values.npy", true_values)
             result = lib.calculate_rmse(true_values, imputed_values, None)
-        
+
         lib.save_results(result, parent_dir, col_name, exp_type[i], exp_prop[i])
 
         if compare:

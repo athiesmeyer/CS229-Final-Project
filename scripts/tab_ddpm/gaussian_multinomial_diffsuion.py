@@ -969,6 +969,7 @@ class GaussianMultinomialDiffusion(torch.nn.Module):
     @torch.no_grad()
     def sample_from_known(self, x, y):
         """
+        Added by Linus Hein, Alex Thiesmeyer, and Johannes Fuest.
 
         :param x: Tensor with known values. Unknown values are NaNs (num_samples, dim)
         :param y: Tensor with categories (must not contain any NaNs) (num_samples)

@@ -104,7 +104,7 @@ def objective(trial):
             else:
                 score += report['metrics']['val']['macro avg']['f1-score']
             print(score)
-        except:
+        except: # addition of high negative score in case of a crash added by Linus Hein
             print('threw an error')
             score -= 1000
 
@@ -112,6 +112,7 @@ def objective(trial):
 
     return score / n_datasets
 
+# Addition of checkpoints in case of crashes added by Linus Hein
 optuna.logging.get_logger('optuna').addHandler(logging.StreamHandler(sys.stdout))
 study_name = ds_name
 storage_name = f'sqlite:///{study_name}_tune_study.db'
