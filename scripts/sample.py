@@ -167,7 +167,8 @@ def sample(
         np.save(os.path.join(parent_dir, 'X_cat_train'), X_cat)
     np.save(os.path.join(parent_dir, 'y_train'), y_gen)
 
-
+### CS229 Code Starts Here ###
+# Parts of the sample_partial function are borrowed from the above sample function
 def sample_partial(
         parent_dir,
         real_data_path='data/higgs-small',
@@ -190,10 +191,6 @@ def sample_partial(
         to_impute=[],
         compare=False
 ):
-    """
-    Added by Alex Thiesmeyer, Linus Hein and Johannes Fuest, based on the above
-    sample(...) function.
-    """
     zero.improve_reproducibility(seed)
 
     T = lib.Transformations(**T_dict)
@@ -293,7 +290,7 @@ def sample_partial(
         is_cat = col_name_dict[col_name][1]
 
         if is_cat:
-            mask = lib.mask_for_imputing(X_true, is_reg + index, exp_type[i], exp_prop[i])
+            mask = lib.mask_for_imputing(X_true, is_reg + index + num_numerical_features, exp_type[i], exp_prop[i])
             for j in range(diffusion.num_classes[index]):
                 X_test[mask, num_numerical_features + index + is_reg + j] = torch.nan
         else:
@@ -333,9 +330,8 @@ def sample_partial(
             result = f1_score(true_values, imputed_values, average="macro")
         else:
             imputed_values = X_gen[mask, index + is_reg]
-            np.save("/Users/linus/workspace/CS229-Final-Project/output/imputed_values.npy", imputed_values)
             true_values = X_true[mask, index + is_reg]
-            np.save("/Users/linus/workspace/CS229-Final-Project/output/true_values.npy", true_values)
+            
             result = lib.calculate_rmse(true_values, imputed_values, None)
 
         lib.save_results(result, parent_dir, col_name, exp_type[i], exp_prop[i])
@@ -368,4 +364,4 @@ def sample_partial(
             lib.save_results(mean_mode_result, parent_dir, col_name, exp_type[i], exp_prop[i], method="mean_mode")
             lib.save_results(random_forest_result, parent_dir, col_name, exp_type[i], exp_prop[i], method="random forest")
 
-
+### CS229 Code Ends Here ###
