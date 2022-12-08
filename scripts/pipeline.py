@@ -33,12 +33,18 @@ def main():
     parser.add_argument('--sample', action='store_true',  default=False)
     parser.add_argument('--eval', action='store_true',  default=False)
     parser.add_argument('--change_val', action='store_true',  default=False)
+    
+    ### CS229 Code Starts Here ###
+    # Add necessary command line arguments. --sample_partial is a flag which triggers the use of the imputation method. --to_impute is 
+    # the columns to impute. --exp_type determines the missingness pattern: either MCAR, MNAR, or MAR. --exp_prop determines the proportion of
+    # missing data to simulate. --compare is a flag which triggers mean/mode and random forest baselines to run the experiment 
     parser.add_argument('--sample_partial', action='store_true', default=False)
     parser.add_argument('--to_impute', nargs="*", type=str)
     parser.add_argument('--exp_type', nargs="*", type=str)
     parser.add_argument('--exp_prop', nargs="*", type=float)
     parser.add_argument('--compare', action='store_true', default=False)
-
+    ### CS229 Code Starts Here ###
+    
     args = parser.parse_args()
     raw_config = lib.load_config(args.config)
     if 'device' in raw_config:
@@ -46,6 +52,9 @@ def main():
     else:
         device = torch.device('cuda:0')
 
+    ### CS229 Code Starts Here ###
+    # If you want to impute multiple cols all with the same missingness pattern or proportion of missing data, you just need to specify those parameters 
+    # once, not for every col. Otherwise, you need to specify the desired parameters for each col to impute
     if args.sample_partial:
         exp_type = args.exp_type
         exp_prop = args.exp_prop
@@ -58,6 +67,7 @@ def main():
             exp_prop = exp_prop * len(to_impute)
         if (len(exp_type) != len(to_impute)) or (len(exp_prop) != len(to_impute)):
             raise Exception("Invalid imputation experiments input")
+    ### CS229 Code Starts Here ###
 
     timer = zero.Timer()
     timer.run()
@@ -93,6 +103,8 @@ def main():
             seed=raw_config['sample'].get('seed', 0),
             change_val=args.change_val
         )    
+    ### CS229 Code Starts Here ###
+    # Based on the above call to the sample function, we instead call sample_partial, with additional arguments
     if args.sample_partial:
         sample_partial(
             num_samples=raw_config['sample']['num_samples'],
@@ -114,6 +126,7 @@ def main():
             to_impute=to_impute,
             compare=compare
         )
+    ### CS229 Code Starts Here ###
 
     save_file(os.path.join(raw_config['parent_dir'], 'info.json'), os.path.join(raw_config['real_data_path'], 'info.json'))
     if args.eval:
