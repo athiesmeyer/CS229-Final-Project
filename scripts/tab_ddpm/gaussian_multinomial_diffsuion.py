@@ -965,12 +965,12 @@ class GaussianMultinomialDiffusion(torch.nn.Module):
             z_cat = ohe_to_categories(z_ohe, self.num_classes)
         sample = torch.cat([z_norm, z_cat], dim=1).cpu()
         return sample, out_dict
-
+    
+    ### CS229 Code Starts Here ###
+    # The sample_from_known function is adapted from the above sample function
     @torch.no_grad()
     def sample_from_known(self, x, y):
         """
-        Added by Linus Hein, Alex Thiesmeyer, and Johannes Fuest.
-
         :param x: Tensor with known values. Unknown values are NaNs (num_samples, dim)
         :param y: Tensor with categories (must not contain any NaNs) (num_samples)
         :return: imputed samples (num_samples, dim)
@@ -1035,6 +1035,7 @@ class GaussianMultinomialDiffusion(torch.nn.Module):
             z_cat = ohe_to_categories(z_ohe, self.num_classes)
         sample = torch.cat([z_norm, z_cat], dim=1)
         return sample.cpu()
+    ### CS229 Code Ends Here ###
     
     def sample_all(self, num_samples, batch_size, y_dist, ddim=False):
         if ddim:
