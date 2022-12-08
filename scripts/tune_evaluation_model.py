@@ -103,6 +103,7 @@ def objective(trial):
             "y_policy": "default"
         }
     trial.set_user_attr("params", params)
+    
     if args.tune_type == "cv":
         score = 0.0
         for fold in range(5):
@@ -114,7 +115,7 @@ def objective(trial):
                 params=params,
                 change_val=False,
                 device=args.device
-            )["val"]["score"]
+            )["val"]["score"] # We had to adapt the output of this function because it was originally erroneous.
             score += val_m1
         score /= 5
 
@@ -138,8 +139,7 @@ def objective(trial):
             params=params,
             change_val=False,
             device=args.device
-        )["val"]["r2"]
-        print("SLFJ:SLFJ:SLFKJS:LFKJD:SKJDJF:", val_m2)
+        )["val"]["r2"] # We had to adapt the output of this function because it was originally erroneous.
         score = val_m2
 
     return score
