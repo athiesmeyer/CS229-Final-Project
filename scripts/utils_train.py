@@ -73,9 +73,9 @@ def make_dataset(
             y[split] = y_t
 
     # Linus Hein: add small amount of noise to improve normalization
-    # X_num_train = X_num['train']
-    # X_num_train = X_num_train + np.random.randn(*X_num_train.shape) * 1e-4
-    # X_num['train'] = X_num_train
+    X_num_train = X_num['train']
+    X_num_train = X_num_train + np.random.randn(*X_num_train.shape) * 1e-4
+    X_num['train'] = X_num_train
 
     info = lib.load_json(os.path.join(data_path, 'info.json'))
 
